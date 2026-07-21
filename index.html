@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PIANO — a machine for playing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bone:   #e9e3d3;   /* canvas   */
+    --paper:  #f4efe2;   /* cards    */
+    --ink:    #16130d;   /* near-black */
+    --red:    #e5401c;   /* vermillion accent */
+    --red-lo: #c33417;
+    --mute:   #7d7462;
+    --line:   #16130d;
+    --shadow: 6px 6px 0 var(--ink);
+    --shadow-sm: 3px 3px 0 var(--ink);
+    --disp: "Fraunces", Georgia, serif;
+    --grot: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+    --mono: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
+  }
+  * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
+  html, body {
+    margin: 0; height: 100%; width: 100%; overflow: hidden;
+    background: var(--bone);
+    /* faint paper grid — flat, printed, not glowy */
+    background-image:
+      linear-gradient(var(--bone) 0 0),
+      repeating-linear-gradient(0deg, rgba(22,19,13,.035) 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(90deg, rgba(22,19,13,.035) 0 1px, transparent 1px 26px);
+    color: var(--ink);
+    font-family: var(--grot);
+  }
+
+  .app {
+    height: 100vh; width: 100vw;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 250px 1fr 268px;
+    grid-template-areas:
+      "top    top    top"
+      "left   stage  right"
+      "left   piano  right";
+    gap: 18px;
+    padding: 20px 24px 26px;
+  }
+
+  /* ---------------- TOP MASTHEAD ---------------- */
+  .top {
+    grid-area: top;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 24px;
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 12px;
+  }
+  .brand { display: flex; align-items: baseline; gap: 16px; }
+  .brand h1 {
+    font-family: var(--disp);
+    font-weight: 900;
+    font-size: clamp(30px, 4.4vw, 58px);
+    line-height: .84;
+    margin: 0;
+    letter-spacing: -1.5px;
+    font-style: italic;
+  }
+  .brand h1 .amp { color: var(--red); }
+  .brand .tag {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--mute);
+    border-left: 2px solid var(--ink); padding-left: 12px;
+    max-width: 220px; line-height: 1.4;
+  }
+  .colophon {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+    text-align: right; color: var(--mute); text-transform: uppercase;
+    line-height: 1.6;
+  }
+  .colophon b { color: var(--ink); }
+
+  /* section label = filled ink tab */
+  .tab {
+    display: inline-block;
+    background: var(--ink); color: var(--bone);
+    font-family: var(--mono); font-weight: 700;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    padding: 4px 9px 3px; margin-bottom: 16px;
+  }
+
+  /* ---------------- VOICES (top-right of masthead) ---------------- */
+  .voices { display: flex; gap: 0; flex-wrap: wrap; }
+  .voice-btn {
+    background: var(--paper);
+    color: var(--ink);
+    border: 2px solid var(--ink);
+    margin: 0 -2px -2px 0;                 /* collapse borders into a grid */
+    padding: 9px 15px;
+    font-family: var(--mono); font-weight: 700;
+    font-size: 11px; letter-spacing: .5px; text-transform: uppercase;
+    cursor: pointer; transition: transform .08s, background .1s, color .1s;
+  }
+  .voice-btn:hover { background: var(--ink); color: var(--bone); }
+  .voice-btn.on {
+    background: var(--red); color: #fff; border-color: var(--ink);
+    position: relative; z-index: 2;
+  }
+
+  /* ---------------- SIDE PANELS ---------------- */
+  .panel {
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    box-shadow: var(--shadow);
+    padding: 18px 16px;
+    overflow-y: auto;
+  }
+  .panel.left  { grid-area: left; }
+  .panel.right { grid-area: right; display: flex; flex-direction: column; }
+
+  /* sliders */
+  .slider-row { margin-bottom: 20px; }
+  .slider-row .lbl {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .slider-row .val {
+    background: var(--ink); color: var(--bone); font-weight: 700;
+    padding: 1px 6px; font-size: 10px;
+  }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 10px; background: transparent; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 10px; background: var(--bone);
+    border: 2px solid var(--ink);
+  }
+  input[type=range]::-moz-range-track {
+    height: 10px; background: var(--bone); border: 2px solid var(--ink);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 20px; margin-top: -7px;
+    background: var(--red); border: 2px solid var(--ink);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 16px; height: 20px; border-radius: 0;
+    background: var(--red); border: 2px solid var(--ink);
+  }
+
+  /* checkbox toggles — chunky square */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 14px; cursor: pointer;
+  }
+  input[type=checkbox] {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; margin: 0;
+    background: var(--bone); border: 2px solid var(--ink); cursor: pointer;
+    position: relative; flex: none;
+  }
+  input[type=checkbox]:checked { background: var(--red); }
+  input[type=checkbox]:checked::after {
+    content: "×"; position: absolute; inset: 0; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; line-height: 1;
+  }
+
+  /* ---------------- SONG LIST (right) ---------------- */
+  .song-list { flex: 1; overflow-y: auto; margin: 0 0 12px; }
+  .song-item {
+    padding: 11px 12px; cursor: pointer;
+    border: 2px solid var(--ink); margin-bottom: -2px;
+    font-family: var(--grot); font-weight: 600; font-size: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: background .1s, color .1s;
+  }
+  .song-item:hover { background: var(--bone); }
+  .song-item.on { background: var(--ink); color: var(--bone); }
+  .song-item.on small { color: var(--red); }
+  .song-item small {
+    font-family: var(--mono); font-weight: 400;
+    color: var(--mute); font-size: 10px; letter-spacing: .5px;
+    text-align: right; line-height: 1.3;
+  }
+
+  .learn-controls { display: flex; flex-direction: column; gap: 10px; }
+  .btn {
+    background: var(--red); color: #fff;
+    border: 2px solid var(--ink); box-shadow: var(--shadow-sm);
+    padding: 12px; font-family: var(--mono); font-weight: 700;
+    font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
+    cursor: pointer; transition: transform .06s, box-shadow .06s;
+  }
+  .btn:hover:not(:disabled) { transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn:active:not(:disabled) { transform: translate(3px,3px); box-shadow: 0 0 0 var(--ink); }
+  .btn.ghost { background: var(--paper); color: var(--ink); }
+  .btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+
+  /* ---------------- STAGE / NOW PLAYING ---------------- */
+  .stage {
+    grid-area: stage;
+    display: flex; align-items: center; gap: 22px;
+    padding: 0 4px;
+  }
+  .stage .idle {
+    font-family: var(--disp); font-style: italic; font-weight: 600;
+    font-size: clamp(18px, 2.4vw, 30px); color: var(--mute);
+  }
+  .stage .idle b { color: var(--ink); }
+  .now {
+    font-family: var(--disp); font-weight: 900; font-style: italic;
+    font-size: clamp(20px, 2.8vw, 34px); letter-spacing: -.5px;
+    white-space: nowrap;
+  }
+  .now::before { content: "▶ "; color: var(--red); font-style: normal; }
+  .progress {
+    flex: 1; max-width: 520px; height: 16px;
+    background: var(--paper); border: 2px solid var(--ink); display: none;
+  }
+  .progress > div { height: 100%; width: 0; background: var(--red);
+    background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, transparent 6px 12px);
+    transition: width .1s linear; }
+
+  /* ---------------- PIANO ---------------- */
+  .cabinet {
+    grid-area: piano;
+    position: relative;
+    padding: 16px 16px 18px;
+    background: var(--ink);
+    border: 3px solid var(--ink);
+    box-shadow: var(--shadow);
+  }
+  /* felt / brand strip */
+  .cabinet .strip {
+    display: flex; align-items: center; justify-content: space-between;
+    height: 20px; margin-bottom: 12px;
+    background: var(--red); border: 2px solid #000;
+    padding: 0 10px;
+    font-family: var(--mono); font-weight: 700; font-size: 10px;
+    letter-spacing: 3px; text-transform: uppercase; color: #fff;
+  }
+
+  .piano {
+    position: relative; display: flex;
+    height: calc(100% - 44px); min-height: 190px; width: 100%;
+    justify-content: center;
+  }
+
+  .key {
+    position: relative; cursor: pointer;
+    transition: transform .02s linear, background .04s;
+  }
+  /* WHITE KEYS — flat ivory, hard black separators, a printed front lip */
+  .white {
+    flex: 1 1 0; max-width: 74px; height: 100%;
+    background: #f7f3ea;
+    border: 2px solid var(--ink);
+    border-bottom-width: 8px;          /* the "front" of the key */
+    margin-right: -2px;                /* collapse side borders */
+    border-radius: 0 0 3px 3px;
+  }
+  .white:last-child { margin-right: 0; }
+  /* BLACK KEYS — solid ink block with a flat top cap */
+  .black {
+    width: 2.4%; min-width: 30px; max-width: 46px; height: 62%;
+    margin: 0 -1.2%; z-index: 2;
+    background: var(--ink);
+    border: 2px solid #000; border-top: none;
+    border-radius: 0 0 3px 3px;
+  }
+  .black::after {
+    content: ""; position: absolute; left: 3px; right: 3px; top: 0; height: 6px;
+    background: #4a4237;
+  }
+
+  .white.active { background: var(--red); transform: translateY(2px); border-bottom-width: 6px; }
+  .black.active { background: var(--red-lo); transform: translateY(2px); }
+  .black.active::after { background: #ff8b6a; }
+
+  /* LEARN HINTS — flat fills, no glow */
+  .white.hint  { background: #2f6df0; }
+  .white.hint2 { background: #bcd0ff; }
+  .black.hint  { background: #2f6df0; }
+  .black.hint::after { background: #9fbcff; }
+  .black.hint2 { background: #4a5f8f; }
+
+  .label {
+    position: absolute; bottom: 10px; left: 0; right: 0; text-align: center;
+    font-family: var(--mono); font-size: 9px; letter-spacing: .5px;
+    color: var(--mute); pointer-events: none;
+  }
+  .black .label { color: #c7bfb0; bottom: 8px; }
+  .white.active .label, .white.hint .label { color: rgba(255,255,255,.85); }
+  .keycap {
+    position: absolute; bottom: 26px; left: 0; right: 0; text-align: center;
+    font-family: var(--mono); font-weight: 700; font-size: 11px;
+    color: var(--ink); pointer-events: none;
+  }
+  .black .keycap { color: #d8d0c0; bottom: 20px; }
+  .white.active .keycap, .white.hint .keycap { color: #fff; }
+
+  kbd {
+    font-family: var(--mono); background: var(--ink); color: var(--bone);
+    padding: 1px 5px; font-size: 10px;
+  }
+  .hidden { display: none !important; }
+
+  /* scrollbars kept minimal */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--ink); }
+  ::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- MASTHEAD -->
+  <div class="top">
+    <div class="brand">
+      <h1>Piano<span class="amp">.</span></h1>
+      <div class="tag">A machine for playing — six voices, five songs, no downloads.</div>
+    </div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
+      <div class="colophon">Est. <b>here &amp; now</b> · Web Audio synthesis<br>Built by hand, key by key</div>
+      <div class="voices" id="voices"></div>
+    </div>
+  </div>
+
+  <!-- LEFT: sound controls -->
+  <div class="panel left">
+    <span class="tab">Sound / Console</span>
+    <div class="slider-row" data-p="volume">
+      <div class="lbl"><span>Volume</span><span class="val"></span></div>
+      <input type="range" min="0" max="100" value="75">
+    </div>
+    <div class="slider-row" data-p="brightness">
+      <div class="lbl"><span>Brightness</span><span class="val"></span></div>
+      <input type="range" min="0" max="100" value="55">
+    </div>
+    <div class="slider-row" data-p="reverb">
+      <div class="lbl"><span>Reverb</span><span class="val"></span></div>
+      <input type="range" min="0" max="100" value="35">
+    </div>
+    <div class="slider-row" data-p="attack">
+      <div class="lbl"><span>Attack</span><span class="val"></span></div>
+      <input type="range" min="0" max="100" value="10">
+    </div>
+    <div class="slider-row" data-p="release">
+      <div class="lbl"><span>Release</span><span class="val"></span></div>
+      <input type="range" min="0" max="100" value="30">
+    </div>
+
+    <span class="tab" style="margin-top:6px;">Switches</span>
+    <label class="toggle-row">Sustain · Space <input type="checkbox" id="sustainToggle"></label>
+    <label class="toggle-row">Note names <input type="checkbox" id="labelToggle"></label>
+    <label class="toggle-row">Key hints <input type="checkbox" id="keycapToggle" checked></label>
+  </div>
+
+  <!-- STAGE -->
+  <div class="stage">
+    <div class="idle" id="stageIdle">Strike a key — or <b>learn a song</b>.</div>
+    <div class="playing hidden" id="stagePlaying" style="display:flex;align-items:center;gap:22px;flex:1;">
+      <span class="now" id="nowTitle"></span>
+      <div class="progress" id="progress"><div></div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT: songs / learn -->
+  <div class="panel right">
+    <span class="tab">Repertoire</span>
+    <div class="song-list" id="songList"></div>
+    <div class="learn-controls">
+      <button class="btn" id="btnLearn" disabled>▶ Learn — step</button>
+      <button class="btn ghost" id="btnDemo" disabled>♪ Play demo</button>
+      <button class="btn ghost hidden" id="btnStop">■ Stop</button>
+    </div>
+  </div>
+
+  <!-- PIANO -->
+  <div class="cabinet">
+    <div class="strip"><span>Model No. 88</span><span>◆ ◆ ◆</span><span>Handmade</span></div>
+    <div class="piano" id="piano"></div>
+  </div>
+
+</div>
+
+<script>
+/* ================================================================== */
+/*  NOTES  —  C3 .. C6 (three octaves + top C)                          */
+/* ================================================================== */
+const WHITE = ["C","D","E","F","G","A","B"];
+const BLACK_AFTER = { C:"C#", D:"D#", F:"F#", G:"G#", A:"A#" };
+// computer-keyboard row mapped onto the central playable span
+const KEYMAP = "zsxdcvgbhnjm,l.;/q2w3er5t6y7ui9o0p".split(""); // fallback filler
+// We'll assign keys explicitly to a comfortable two-octave center (C4..B5)
+const CENTER_KEYS = {
+  "C4":"a","C#4":"w","D4":"s","D#4":"e","E4":"d","F4":"f","F#4":"t",
+  "G4":"g","G#4":"y","A4":"h","A#4":"u","B4":"j",
+  "C5":"k","C#5":"o","D5":"l","D#5":"p","E5":";","F5":"'"
+};
+
+const NOTES = [];
+for (let oct = 3; oct <= 5; oct++) {
+  WHITE.forEach(w => {
+    NOTES.push({ note: w + oct, type: "white" });
+    if (BLACK_AFTER[w]) NOTES.push({ note: BLACK_AFTER[w] + oct, type: "black" });
+  });
+}
+NOTES.push({ note: "C6", type: "white" }); // top C
+
+const SEMI = { C:0,"C#":1,D:2,"D#":3,E:4,F:5,"F#":6,G:7,"G#":8,A:9,"A#":10,B:11 };
+function freq(note) {
+  const m = note.match(/^([A-G]#?)(\d)$/);
+  const semis = SEMI[m[1]] + (parseInt(m[2]) - 4) * 12;   // rel to C4
+  return 440 * Math.pow(2, (semis - 9) / 12);             // rel to A4
+}
+
+/* ================================================================== */
+/*  VOICES                                                             */
+/*  Each partial: harmonic ratio, gain, decay(sec), optional detune    */
+/* ================================================================== */
+const VOICES = {
+  grand: {
+    name: "Grand", cutoff: 5200, attack: 0.004, hammer: 0.9, inharm: 0.0004,
+    partials: [
+      {r:1, g:1.0, d:6.0}, {r:2, g:0.55, d:4.5}, {r:3, g:0.30, d:3.2},
+      {r:4, g:0.16, d:2.4}, {r:5, g:0.10, d:1.8}, {r:6, g:0.06, d:1.4},
+      {r:1, g:0.35, d:6.0, det:+2}, {r:1, g:0.35, d:6.0, det:-2}
+    ]
+  },
+  soft: {
+    name: "Soft / Felt", cutoff: 2000, attack: 0.02, hammer: 0.25, inharm: 0.0003,
+    partials: [
+      {r:1, g:1.0, d:5.5}, {r:2, g:0.28, d:3.5}, {r:3, g:0.10, d:2.0},
+      {r:1, g:0.30, d:5.5, det:+3}, {r:1, g:0.30, d:5.5, det:-3}
+    ]
+  },
+  bright: {
+    name: "Bright", cutoff: 8500, attack: 0.003, hammer: 1.0, inharm: 0.0006,
+    partials: [
+      {r:1, g:0.9, d:5.0}, {r:2, g:0.7, d:4.0}, {r:3, g:0.5, d:3.0},
+      {r:4, g:0.35, d:2.3}, {r:5, g:0.24, d:1.8}, {r:6, g:0.16, d:1.4},
+      {r:7, g:0.10, d:1.1}, {r:1, g:0.3, d:5.0, det:+4}, {r:1, g:0.3, d:5.0, det:-4}
+    ]
+  },
+  honky: {
+    name: "Honky-Tonk", cutoff: 6000, attack: 0.004, hammer: 0.8, inharm: 0.0008,
+    partials: [
+      {r:1, g:1.0, d:4.5}, {r:1, g:0.9, d:4.5, det:+14}, {r:1, g:0.9, d:4.5, det:-13},
+      {r:2, g:0.4, d:3.0}, {r:3, g:0.25, d:2.2}, {r:4, g:0.14, d:1.6}
+    ]
+  },
+  rhodes: {
+    name: "Electric", cutoff: 3800, attack: 0.006, hammer: 0.5, inharm: 0.0002, bell: true,
+    partials: [
+      {r:1, g:1.0, d:4.0, wave:"sine"}, {r:2, g:0.15, d:2.5, wave:"sine"},
+      {r:6, g:0.20, d:0.5, wave:"sine"},   // metallic tine attack
+      {r:14, g:0.06, d:0.3, wave:"sine"},
+      {r:1, g:0.25, d:4.0, det:+5, wave:"sine"}
+    ]
+  },
+  harpsi: {
+    name: "Harpsichord", cutoff: 9000, attack: 0.002, hammer: 1.0, inharm: 0.001,
+    partials: [
+      {r:1, g:0.8, d:1.6, wave:"sawtooth"}, {r:2, g:0.5, d:1.2, wave:"sawtooth"},
+      {r:3, g:0.3, d:0.9}, {r:4, g:0.2, d:0.7}, {r:1, g:0.4, d:1.6, det:+6}
+    ]
+  }
+};
+let currentVoice = "grand";
+
+/* ================================================================== */
+/*  AUDIO ENGINE                                                        */
+/* ================================================================== */
+let ctx, masterGain, dryGain, wetGain, convolver, comp;
+const params = { volume:.75, brightness:.55, reverb:.35, attack:.10, release:.30 };
+let sustainPedal = false;
+const live = new Map();
+
+function buildReverb(seconds = 2.4, decay = 3.2) {
+  const rate = ctx.sampleRate;
+  const len = rate * seconds;
+  const buf = ctx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+  }
+  return buf;
+}
+
+function audio() {
+  if (ctx) { if (ctx.state === "suspended") ctx.resume(); return ctx; }
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+  comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -18; comp.knee.value = 20; comp.ratio.value = 3;
+  comp.attack.value = 0.003; comp.release.value = 0.25;
+
+  masterGain = ctx.createGain();
+  masterGain.gain.value = params.volume;
+
+  dryGain = ctx.createGain();
+  wetGain = ctx.createGain();
+  wetGain.gain.value = params.reverb;
+  dryGain.gain.value = 1 - params.reverb * 0.6;
+
+  convolver = ctx.createConvolver();
+  convolver.buffer = buildReverb();
+
+  dryGain.connect(comp);
+  wetGain.connect(convolver);
+  convolver.connect(comp);
+  comp.connect(masterGain);
+  masterGain.connect(ctx.destination);
+  return ctx;
+}
+
+function noiseBurst(dest, when, amt) {
+  // short filtered noise = hammer/percussive attack
+  const dur = 0.05;
+  const n = Math.floor(ctx.sampleRate * dur);
+  const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/n, 2);
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 2500; bp.Q.value = 0.7;
+  const g = ctx.createGain(); g.gain.value = amt * 0.4;
+  src.connect(bp).connect(g).connect(dest);
+  src.start(when);
+}
+
+function play(note, velocity = 0.85) {
+  if (live.has(note)) stop(note, true);
+  const ac = audio();
+  const V = VOICES[currentVoice];
+  const f = freq(note);
+  const now = ac.currentTime;
+
+  const voiceGain = ac.createGain();
+  const filter = ac.createBiquadFilter();
+  filter.type = "lowpass";
+  const cut = V.cutoff * (0.35 + params.brightness * 1.3);
+  filter.frequency.value = Math.min(cut, 16000);
+  filter.Q.value = 0.5;
+
+  voiceGain.connect(filter);
+  filter.connect(dryGain);
+  filter.connect(wetGain);
+
+  const oscs = [];
+  V.partials.forEach(p => {
+    const o = ac.createOscillator();
+    o.type = p.wave || "sine";
+    // string inharmonicity: partials stretch slightly sharp
+    const inh = 1 + V.inharm * p.r * p.r;
+    o.frequency.value = f * p.r * inh;
+    if (p.det) o.detune.value = p.det;
+
+    const g = ac.createGain();
+    const peak = p.g * velocity;
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak,0.0002), now + Math.max(0.002, params.attack * V.attack * 6 + V.attack));
+    // exponential per-partial decay toward a low floor
+    g.gain.exponentialRampToValueAtTime(0.0004, now + p.d);
+    o.connect(g).connect(voiceGain);
+    o.start(now);
+    oscs.push({o, g});
+  });
+
+  if (V.hammer) noiseBurst(voiceGain, now, V.hammer * velocity);
+
+  voiceGain.gain.setValueAtTime(1, now);
+  live.set(note, { oscs, voiceGain, note });
+}
+
+function stop(note, immediate = false) {
+  const v = live.get(note);
+  if (!v) return;
+  live.delete(note);
+  const now = ctx.currentTime;
+  const rel = immediate ? 0.02 : (sustainPedal ? 1.6 : (0.08 + params.release * 0.9));
+  v.voiceGain.gain.cancelScheduledValues(now);
+  v.voiceGain.gain.setValueAtTime(v.voiceGain.gain.value, now);
+  v.voiceGain.gain.exponentialRampToValueAtTime(0.0001, now + rel);
+  v.oscs.forEach(({o}) => { try { o.stop(now + rel + 0.05); } catch(e){} });
+}
+
+/* ================================================================== */
+/*  BUILD PIANO DOM                                                     */
+/* ================================================================== */
+const piano = document.getElementById("piano");
+const elByNote = new Map();
+const keyByChar = new Map();
+
+// white keys form the flex row; black keys are absolutely-ish placed via negative margins between them.
+NOTES.forEach(n => {
+  const el = document.createElement("div");
+  el.className = "key " + n.type;
+  el.dataset.note = n.note;
+
+  const label = document.createElement("span");
+  label.className = "label"; label.textContent = n.note;
+  label.style.display = "none";
+  el.appendChild(label);
+
+  const cap = document.createElement("span");
+  cap.className = "keycap";
+  const ch = CENTER_KEYS[n.note];
+  if (ch) { cap.textContent = ch === "'" ? "’" : ch.toUpperCase(); keyByChar.set(ch, n.note); }
+  el.appendChild(cap);
+
+  el.addEventListener("pointerdown", e => { e.preventDefault(); press(n.note); });
+  el.addEventListener("pointerup",   () => release(n.note));
+  el.addEventListener("pointerleave",() => release(n.note));
+
+  piano.appendChild(el);
+  elByNote.set(n.note, el);
+});
+
+function press(note, fromLearn) {
+  const el = elByNote.get(note);
+  if (!el) return;
+  el.classList.add("active");
+  play(note);
+  markStarted();
+  if (learn.active && !fromLearn) checkLearnHit(note);
+}
+function release(note) {
+  const el = elByNote.get(note);
+  if (!el || !el.classList.contains("active")) return;
+  el.classList.remove("active");
+  stop(note);
+}
+
+let started = false;
+function markStarted(){ if(!started){ started = true; } }
+
+/* ================================================================== */
+/*  KEYBOARD INPUT                                                      */
+/* ================================================================== */
+const down = new Set();
+window.addEventListener("keydown", e => {
+  if (e.repeat) return;
+  if (e.code === "Space") { e.preventDefault(); setSustain(true); return; }
+  const k = e.key.toLowerCase();
+  if (keyByChar.has(k) && !down.has(k)) { down.add(k); press(keyByChar.get(k)); }
+});
+window.addEventListener("keyup", e => {
+  if (e.code === "Space") { if(!document.getElementById("sustainToggle").checked) setSustain(false); return; }
+  const k = e.key.toLowerCase();
+  if (keyByChar.has(k)) { down.delete(k); release(keyByChar.get(k)); }
+});
+function setSustain(v){ sustainPedal = v; }
+
+/* ================================================================== */
+/*  VOICE BUTTONS                                                       */
+/* ================================================================== */
+const voicesEl = document.getElementById("voices");
+Object.entries(VOICES).forEach(([id, v], i) => {
+  const b = document.createElement("button");
+  b.className = "voice-btn" + (i === 0 ? " on" : "");
+  b.textContent = v.name; b.dataset.id = id;
+  b.onclick = () => {
+    currentVoice = id;
+    document.querySelectorAll(".voice-btn").forEach(x => x.classList.toggle("on", x.dataset.id === id));
+  };
+  voicesEl.appendChild(b);
+});
+
+/* ================================================================== */
+/*  SLIDERS                                                             */
+/* ================================================================== */
+document.querySelectorAll(".slider-row").forEach(row => {
+  const p = row.dataset.p;
+  const input = row.querySelector("input");
+  const val = row.querySelector(".val");
+  const upd = () => {
+    const x = +input.value / 100;
+    params[p] = x;
+    val.textContent = input.value + "%";
+    if (ctx) {
+      if (p === "volume") masterGain.gain.setTargetAtTime(x, ctx.currentTime, .02);
+      if (p === "reverb") { wetGain.gain.setTargetAtTime(x, ctx.currentTime, .05); dryGain.gain.setTargetAtTime(1 - x*.6, ctx.currentTime, .05); }
+    }
+  };
+  input.addEventListener("input", upd); upd();
+});
+
+document.getElementById("sustainToggle").addEventListener("change", e => setSustain(e.target.checked));
+document.getElementById("labelToggle").addEventListener("change", e => {
+  document.querySelectorAll(".label").forEach(l => l.style.display = e.target.checked ? "block" : "none");
+});
+document.getElementById("keycapToggle").addEventListener("change", e => {
+  document.querySelectorAll(".keycap").forEach(l => l.style.display = e.target.checked ? "block" : "none");
+});
+
+/* ================================================================== */
+/*  SONGS                                                               */
+/*  beats: quarter=1 ; melody = [ [note(s), beats], ... ]               */
+/* ================================================================== */
+const SONGS = {
+  twinkle: {
+    title: "Twinkle Twinkle", tempo: 112,
+    notes: [["C4",1],["C4",1],["G4",1],["G4",1],["A4",1],["A4",1],["G4",2],
+            ["F4",1],["F4",1],["E4",1],["E4",1],["D4",1],["D4",1],["C4",2],
+            ["G4",1],["G4",1],["F4",1],["F4",1],["E4",1],["E4",1],["D4",2],
+            ["G4",1],["G4",1],["F4",1],["F4",1],["E4",1],["E4",1],["D4",2],
+            ["C4",1],["C4",1],["G4",1],["G4",1],["A4",1],["A4",1],["G4",2],
+            ["F4",1],["F4",1],["E4",1],["E4",1],["D4",1],["D4",1],["C4",2]]
+  },
+  ode: {
+    title: "Ode to Joy", tempo: 120,
+    notes: [["E4",1],["E4",1],["F4",1],["G4",1],["G4",1],["F4",1],["E4",1],["D4",1],
+            ["C4",1],["C4",1],["D4",1],["E4",1],["E4",1.5],["D4",.5],["D4",2],
+            ["E4",1],["E4",1],["F4",1],["G4",1],["G4",1],["F4",1],["E4",1],["D4",1],
+            ["C4",1],["C4",1],["D4",1],["E4",1],["D4",1.5],["C4",.5],["C4",2]]
+  },
+  birthday: {
+    title: "Happy Birthday", tempo: 120,
+    notes: [["C4",.75],["C4",.25],["D4",1],["C4",1],["F4",1],["E4",2],
+            ["C4",.75],["C4",.25],["D4",1],["C4",1],["G4",1],["F4",2],
+            ["C4",.75],["C4",.25],["C5",1],["A4",1],["F4",1],["E4",1],["D4",2],
+            ["A#4",.75],["A#4",.25],["A4",1],["F4",1],["G4",1],["F4",2]]
+  },
+  jingle: {
+    title: "Jingle Bells", tempo: 130,
+    notes: [["E4",1],["E4",1],["E4",2],["E4",1],["E4",1],["E4",2],
+            ["E4",1],["G4",1],["C4",1],["D4",1],["E4",4],
+            ["F4",1],["F4",1],["F4",1.5],["F4",.5],["F4",1],["E4",1],["E4",1],["E4",.5],["E4",.5],
+            ["E4",1],["D4",1],["D4",1],["E4",1],["D4",2],["G4",2]]
+  },
+  furelise: {
+    title: "Für Elise (intro)", tempo: 100,
+    notes: [["E5",.5],["D#5",.5],["E5",.5],["D#5",.5],["E5",.5],["B4",.5],["D5",.5],["C5",.5],["A4",1],
+            ["C4",.5],["E4",.5],["A4",.5],["B4",1],
+            ["E4",.5],["G#4",.5],["B4",.5],["C5",1],
+            ["E4",.5],["E5",.5],["D#5",.5],["E5",.5],["D#5",.5],["E5",.5],["B4",.5],["D5",.5],["C5",.5],["A4",1]]
+  }
+};
+
+const songListEl = document.getElementById("songList");
+let selectedSong = null;
+Object.entries(SONGS).forEach(([id, s]) => {
+  const d = document.createElement("div");
+  d.className = "song-item";
+  d.innerHTML = `<span>${s.title}</span><small>${s.notes.length} notes<br>${s.tempo} bpm</small>`;
+  d.onclick = () => {
+    selectedSong = id;
+    document.querySelectorAll(".song-item").forEach(x => x.classList.remove("on"));
+    d.classList.add("on");
+    document.getElementById("btnLearn").disabled = false;
+    document.getElementById("btnDemo").disabled = false;
+  };
+  songListEl.appendChild(d);
+});
+
+/* ================================================================== */
+/*  DEMO PLAYBACK + LEARN MODE                                          */
+/* ================================================================== */
+const stageIdle = document.getElementById("stageIdle");
+const stagePlaying = document.getElementById("stagePlaying");
+const nowTitle = document.getElementById("nowTitle");
+const progress = document.getElementById("progress");
+const progressBar = progress.firstElementChild;
+const btnLearn = document.getElementById("btnLearn");
+const btnDemo  = document.getElementById("btnDemo");
+const btnStop  = document.getElementById("btnStop");
+
+let demoTimers = [];
+const learn = { active:false, idx:0, notes:null };
+
+function showStage(title, showProg) {
+  stageIdle.classList.add("hidden");
+  stagePlaying.classList.remove("hidden");
+  nowTitle.textContent = title;
+  progress.style.display = showProg ? "block" : "none";
+}
+function hideStage() {
+  stagePlaying.classList.add("hidden");
+  stageIdle.classList.remove("hidden");
+  progress.style.display = "none";
+}
+
+function clearHints(){ elByNote.forEach(el => el.classList.remove("hint","hint2")); }
+
+function stopAll() {
+  demoTimers.forEach(t => clearTimeout(t)); demoTimers = [];
+  learn.active = false;
+  clearHints();
+  [...live.keys()].forEach(n => { const el = elByNote.get(n); if(el) el.classList.remove("active"); stop(n, true); });
+  btnStop.classList.add("hidden");
+  btnLearn.classList.remove("hidden"); btnDemo.classList.remove("hidden");
+  btnLearn.disabled = btnDemo.disabled = !selectedSong;
+  btnLearn.textContent = "▶ Learn — step";
+  hideStage();
+}
+btnStop.onclick = stopAll;
+
+/* --- demo: auto play the melody --- */
+btnDemo.onclick = () => {
+  if (!selectedSong) return;
+  audio();
+  const s = SONGS[selectedSong];
+  const beat = 60 / s.tempo;
+  enterPlayUI(s.title, true);
+  let t = 0.15;
+  s.notes.forEach(([note, beats], i) => {
+    const durMs = beats * beat * 1000;
+    demoTimers.push(setTimeout(() => {
+      press(note, true);
+      progressBar.style.width = ((i+1)/s.notes.length*100) + "%";
+    }, t*1000));
+    demoTimers.push(setTimeout(() => release(note), t*1000 + durMs*0.9));
+    t += beats * beat;
+  });
+  demoTimers.push(setTimeout(stopAll, t*1000 + 400));
+};
+
+/* --- learn: highlight next note, wait for user to hit it --- */
+btnLearn.onclick = () => {
+  if (!selectedSong) return;
+  audio();
+  const s = SONGS[selectedSong];
+  learn.active = true;
+  learn.idx = 0;
+  learn.notes = s.notes;
+  enterPlayUI(s.title + "  —  play the glowing key", false);
+  cueLearn();
+};
+
+function enterPlayUI(title, prog) {
+  showStage(title, prog);
+  btnStop.classList.remove("hidden");
+  btnLearn.classList.add("hidden"); btnDemo.classList.add("hidden");
+}
+
+function cueLearn() {
+  clearHints();
+  if (learn.idx >= learn.notes.length) { flashDone(); return; }
+  const [note] = learn.notes[learn.idx];
+  elByNote.get(note)?.classList.add("hint");
+  // preview the next note faintly
+  const nxt = learn.notes[learn.idx+1];
+  if (nxt) elByNote.get(nxt[0])?.classList.add("hint2");
+}
+
+function checkLearnHit(note) {
+  const want = learn.notes[learn.idx][0];
+  if (note === want) {
+    learn.idx++;
+    setTimeout(cueLearn, 90);
+  }
+}
+
+function flashDone() {
+  nowTitle.textContent = "✓ Nice — song complete!";
+  clearHints();
+  setTimeout(stopAll, 1600);
+}
+</script>
+</body>
+</html>
