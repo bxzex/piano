@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>PIANO — a machine for playing</title>
+<title>Piano · play it in your browser</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
@@ -323,7 +323,7 @@
   <div class="top">
     <div class="brand">
       <h1>Piano<span class="amp">.</span></h1>
-      <div class="tag">A machine for playing — six voices, five songs, no downloads.</div>
+      <div class="tag">Six voices and five songs to learn. Nothing to download.</div>
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
       <div class="colophon">Est. <b>here &amp; now</b> · Web Audio synthesis<br>Built by hand, key by key</div>
@@ -363,7 +363,7 @@
 
   <!-- STAGE -->
   <div class="stage">
-    <div class="idle" id="stageIdle">Strike a key — or <b>learn a song</b>.</div>
+    <div class="idle" id="stageIdle">Play a key, or <b>learn a song</b>.</div>
     <div class="playing hidden" id="stagePlaying" style="display:flex;align-items:center;gap:22px;flex:1;">
       <span class="now" id="nowTitle"></span>
       <div class="progress" id="progress"><div></div></div>
@@ -375,7 +375,7 @@
     <span class="tab">Repertoire</span>
     <div class="song-list" id="songList"></div>
     <div class="learn-controls">
-      <button class="btn" id="btnLearn" disabled>▶ Learn — step</button>
+      <button class="btn" id="btnLearn" disabled>▶ Learn step by step</button>
       <button class="btn ghost" id="btnDemo" disabled>♪ Play demo</button>
       <button class="btn ghost hidden" id="btnStop">■ Stop</button>
     </div>
@@ -798,7 +798,7 @@ function stopAll() {
   btnStop.classList.add("hidden");
   btnLearn.classList.remove("hidden"); btnDemo.classList.remove("hidden");
   btnLearn.disabled = btnDemo.disabled = !selectedSong;
-  btnLearn.textContent = "▶ Learn — step";
+  btnLearn.textContent = "▶ Learn step by step";
   hideStage();
 }
 btnStop.onclick = stopAll;
@@ -831,7 +831,7 @@ btnLearn.onclick = () => {
   learn.active = true;
   learn.idx = 0;
   learn.notes = s.notes;
-  enterPlayUI(s.title + "  —  play the glowing key", false);
+  enterPlayUI(s.title + ": play the key that lights up", false);
   cueLearn();
 };
 
@@ -860,7 +860,7 @@ function checkLearnHit(note) {
 }
 
 function flashDone() {
-  nowTitle.textContent = "✓ Nice — song complete!";
+  nowTitle.textContent = "✓ Nice, you played the whole song";
   clearHints();
   setTimeout(stopAll, 1600);
 }
