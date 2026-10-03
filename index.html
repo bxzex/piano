@@ -3,34 +3,30 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Piano · play it in your browser</title>
+<title>Piano</title>
+<meta name="description" content="A browser piano: six synthesised voices, five songs to learn, played from your keyboard.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Gantari:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bone:   #e9e3d3;   /* canvas   */
-    --paper:  #f4efe2;   /* cards    */
+    --bone:   #eceae5;   /* canvas   */
+    --paper:  #f8f7f4;   /* cards    */
     --ink:    #16130d;   /* near-black */
     --red:    #e5401c;   /* vermillion accent */
     --red-lo: #c33417;
-    --mute:   #7d7462;
-    --line:   #16130d;
-    --shadow: 6px 6px 0 var(--ink);
-    --shadow-sm: 3px 3px 0 var(--ink);
-    --disp: "Fraunces", Georgia, serif;
-    --grot: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
-    --mono: "Space Mono", ui-monospace, "SFMono-Regular", monospace;
+    --mute:   #5f594f;
+    --line:   #cfcbc2;
+    --shadow: none;
+    --shadow-sm: none;
+    --disp: "DM Serif Display", Georgia, serif;
+    --grot: "Gantari", "Helvetica Neue", Arial, sans-serif;
+    --mono: "Gantari", "Helvetica Neue", Arial, sans-serif;
   }
   * { box-sizing: border-box; -webkit-user-select: none; user-select: none; }
   html, body {
     margin: 0; height: 100%; width: 100%; overflow: hidden;
     background: var(--bone);
-    /* faint paper grid — flat, printed, not glowy */
-    background-image:
-      linear-gradient(var(--bone) 0 0),
-      repeating-linear-gradient(0deg, rgba(22,19,13,.035) 0 1px, transparent 1px 26px),
-      repeating-linear-gradient(90deg, rgba(22,19,13,.035) 0 1px, transparent 1px 26px);
     color: var(--ink);
     font-family: var(--grot);
   }
@@ -53,41 +49,37 @@
     grid-area: top;
     display: flex; align-items: flex-end; justify-content: space-between;
     gap: 24px;
-    border-bottom: 3px solid var(--ink);
-    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
   }
   .brand { display: flex; align-items: baseline; gap: 16px; }
   .brand h1 {
     font-family: var(--disp);
-    font-weight: 900;
-    font-size: clamp(30px, 4.4vw, 58px);
-    line-height: .84;
+    font-weight: 400;
+    font-size: clamp(30px, 3.6vw, 46px);
+    line-height: .9;
     margin: 0;
-    letter-spacing: -1.5px;
-    font-style: italic;
   }
   .brand h1 .amp { color: var(--red); }
   .brand .tag {
     font-family: var(--mono);
-    font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+    font-size: 14px;
     color: var(--mute);
-    border-left: 2px solid var(--ink); padding-left: 12px;
-    max-width: 220px; line-height: 1.4;
+    max-width: 260px; line-height: 1.4;
   }
   .colophon {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
-    text-align: right; color: var(--mute); text-transform: uppercase;
-    line-height: 1.6;
+    font-size: 13px;
+    text-align: right; color: var(--mute);
+    line-height: 1.5;
   }
-  .colophon b { color: var(--ink); }
+  .colophon a { color: inherit; }
+  .topr { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 
   /* section label = filled ink tab */
   .tab {
-    display: inline-block;
-    background: var(--ink); color: var(--bone);
-    font-family: var(--mono); font-weight: 700;
-    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-    padding: 4px 9px 3px; margin-bottom: 16px;
+    display: block;
+    font-weight: 700; font-size: 15px;
+    margin-bottom: 16px;
   }
 
   /* ---------------- VOICES (top-right of masthead) ---------------- */
@@ -95,14 +87,16 @@
   .voice-btn {
     background: var(--paper);
     color: var(--ink);
-    border: 2px solid var(--ink);
-    margin: 0 -2px -2px 0;                 /* collapse borders into a grid */
-    padding: 9px 15px;
-    font-family: var(--mono); font-weight: 700;
-    font-size: 11px; letter-spacing: .5px; text-transform: uppercase;
-    cursor: pointer; transition: transform .08s, background .1s, color .1s;
+    border: 1px solid var(--ink);
+    margin: 0 -1px -1px 0;                 /* collapse borders into a grid */
+    padding: 8px 14px;
+    font-family: var(--grot); font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
   }
-  .voice-btn:hover { background: var(--ink); color: var(--bone); }
+  .voice-btn:hover { background: var(--bone); }
+  .voice-btn.on:hover { background: var(--red-lo); }
+  button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid #2f6df0; outline-offset: 2px; }
   .voice-btn.on {
     background: var(--red); color: #fff; border-color: var(--ink);
     position: relative; z-index: 2;
@@ -111,8 +105,7 @@
   /* ---------------- SIDE PANELS ---------------- */
   .panel {
     background: var(--paper);
-    border: 3px solid var(--ink);
-    box-shadow: var(--shadow);
+    border: 1px solid var(--line);
     padding: 18px 16px;
     overflow-y: auto;
   }
@@ -123,83 +116,71 @@
   .slider-row { margin-bottom: 20px; }
   .slider-row .lbl {
     display: flex; justify-content: space-between; align-items: baseline;
-    font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
-    text-transform: uppercase; margin-bottom: 8px;
+    font-size: 14px; margin-bottom: 8px;
   }
   .slider-row .val {
-    background: var(--ink); color: var(--bone); font-weight: 700;
-    padding: 1px 6px; font-size: 10px;
+    font-weight: 600; font-variant-numeric: tabular-nums;
   }
   input[type=range] {
     -webkit-appearance: none; appearance: none;
-    width: 100%; height: 10px; background: transparent; cursor: pointer;
+    width: 100%; height: 20px; background: transparent; cursor: pointer; margin: 0;
   }
   input[type=range]::-webkit-slider-runnable-track {
-    height: 10px; background: var(--bone);
-    border: 2px solid var(--ink);
+    height: 4px; background: #c9c5bb;
   }
   input[type=range]::-moz-range-track {
-    height: 10px; background: var(--bone); border: 2px solid var(--ink);
+    height: 4px; background: #c9c5bb;
   }
   input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
-    width: 16px; height: 20px; margin-top: -7px;
-    background: var(--red); border: 2px solid var(--ink);
+    width: 12px; height: 20px; margin-top: -8px;
+    background: var(--ink); border: 0; border-radius: 2px;
   }
   input[type=range]::-moz-range-thumb {
-    width: 16px; height: 20px; border-radius: 0;
-    background: var(--red); border: 2px solid var(--ink);
+    width: 12px; height: 20px; border-radius: 2px;
+    background: var(--ink); border: 0;
   }
 
-  /* checkbox toggles — chunky square */
+  /* checkbox toggles */
   .toggle-row {
     display: flex; align-items: center; justify-content: space-between;
-    font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
-    text-transform: uppercase; margin-bottom: 14px; cursor: pointer;
+    font-size: 14px; margin-bottom: 14px; cursor: pointer;
   }
   input[type=checkbox] {
-    -webkit-appearance: none; appearance: none;
-    width: 20px; height: 20px; margin: 0;
-    background: var(--bone); border: 2px solid var(--ink); cursor: pointer;
-    position: relative; flex: none;
-  }
-  input[type=checkbox]:checked { background: var(--red); }
-  input[type=checkbox]:checked::after {
-    content: "×"; position: absolute; inset: 0; color: #fff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: 700; line-height: 1;
+    width: 18px; height: 18px; margin: 0; cursor: pointer; flex: none;
+    accent-color: var(--red);
   }
 
   /* ---------------- SONG LIST (right) ---------------- */
   .song-list { flex: 1; overflow-y: auto; margin: 0 0 12px; }
   .song-item {
-    padding: 11px 12px; cursor: pointer;
-    border: 2px solid var(--ink); margin-bottom: -2px;
-    font-family: var(--grot); font-weight: 600; font-size: 14px;
+    padding: 10px 10px; cursor: pointer; width: 100%; text-align: left;
+    background: none; color: inherit;
+    border: 0; border-bottom: 1px solid var(--line);
+    font-family: var(--grot); font-weight: 600; font-size: 15px;
     display: flex; justify-content: space-between; align-items: center;
-    transition: background .1s, color .1s;
   }
   .song-item:hover { background: var(--bone); }
   .song-item.on { background: var(--ink); color: var(--bone); }
-  .song-item.on small { color: var(--red); }
+  .song-item.on small { color: #cfc9bc; }
   .song-item small {
-    font-family: var(--mono); font-weight: 400;
-    color: var(--mute); font-size: 10px; letter-spacing: .5px;
+    font-weight: 400; font-variant-numeric: tabular-nums;
+    color: var(--mute); font-size: 12.5px;
     text-align: right; line-height: 1.3;
   }
 
   .learn-controls { display: flex; flex-direction: column; gap: 10px; }
   .btn {
     background: var(--red); color: #fff;
-    border: 2px solid var(--ink); box-shadow: var(--shadow-sm);
-    padding: 12px; font-family: var(--mono); font-weight: 700;
-    font-size: 12px; letter-spacing: 1px; text-transform: uppercase;
-    cursor: pointer; transition: transform .06s, box-shadow .06s;
+    border: 1px solid var(--red-lo);
+    padding: 11px; font-family: var(--grot); font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
   }
-  .btn:hover:not(:disabled) { transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--ink); }
-  .btn:active:not(:disabled) { transform: translate(3px,3px); box-shadow: 0 0 0 var(--ink); }
-  .btn.ghost { background: var(--paper); color: var(--ink); }
-  .btn:disabled { opacity: .35; cursor: default; box-shadow: none; }
+  .btn:hover:not(:disabled) { background: var(--red-lo); }
+  .btn.ghost { background: var(--paper); color: var(--ink); border-color: var(--ink); }
+  .btn.ghost:hover:not(:disabled) { background: var(--bone); }
+  .btn:disabled { background: var(--bone); color: var(--mute); border-color: var(--line); cursor: default; }
 
   /* ---------------- STAGE / NOW PLAYING ---------------- */
   .stage {
@@ -208,22 +189,17 @@
     padding: 0 4px;
   }
   .stage .idle {
-    font-family: var(--disp); font-style: italic; font-weight: 600;
-    font-size: clamp(18px, 2.4vw, 30px); color: var(--mute);
+    font-size: clamp(17px, 1.7vw, 22px); color: var(--mute);
   }
-  .stage .idle b { color: var(--ink); }
   .now {
-    font-family: var(--disp); font-weight: 900; font-style: italic;
-    font-size: clamp(20px, 2.8vw, 34px); letter-spacing: -.5px;
-    white-space: nowrap;
+    font-weight: 600;
+    font-size: clamp(18px, 2vw, 26px);
   }
-  .now::before { content: "▶ "; color: var(--red); font-style: normal; }
   .progress {
     flex: 1; max-width: 520px; height: 16px;
-    background: var(--paper); border: 2px solid var(--ink); display: none;
+    background: var(--paper); border: 1px solid var(--ink); display: none;
   }
   .progress > div { height: 100%; width: 0; background: var(--red);
-    background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, transparent 6px 12px);
     transition: width .1s linear; }
 
   /* ---------------- PIANO ---------------- */
@@ -232,17 +208,15 @@
     position: relative;
     padding: 16px 16px 18px;
     background: var(--ink);
-    border: 3px solid var(--ink);
-    box-shadow: var(--shadow);
+    border-radius: 4px; min-width: 0;
   }
   /* felt / brand strip */
   .cabinet .strip {
     display: flex; align-items: center; justify-content: space-between;
     height: 20px; margin-bottom: 12px;
-    background: var(--red); border: 2px solid #000;
+    background: var(--red);
     padding: 0 10px;
-    font-family: var(--mono); font-weight: 700; font-size: 10px;
-    letter-spacing: 3px; text-transform: uppercase; color: #fff;
+    font-weight: 600; font-size: 12px; color: #fff;
   }
 
   .piano {
@@ -255,7 +229,7 @@
     position: relative; cursor: pointer;
     transition: transform .02s linear, background .04s;
   }
-  /* WHITE KEYS — flat ivory, hard black separators, a printed front lip */
+  /* WHITE KEYS: flat ivory, hard black separators, a printed front lip */
   .white {
     flex: 1 1 0; max-width: 74px; height: 100%;
     background: #f7f3ea;
@@ -265,10 +239,10 @@
     border-radius: 0 0 3px 3px;
   }
   .white:last-child { margin-right: 0; }
-  /* BLACK KEYS — solid ink block with a flat top cap */
+  /* BLACK KEYS: solid ink block with a flat top cap */
   .black {
-    width: 2.4%; min-width: 30px; max-width: 46px; height: 62%;
-    margin: 0 -1.2%; z-index: 2;
+    width: 2.6%; max-width: 46px; height: 62%;
+    margin: 0 -1.3%; z-index: 2;
     background: var(--ink);
     border: 2px solid #000; border-top: none;
     border-radius: 0 0 3px 3px;
@@ -282,7 +256,7 @@
   .black.active { background: var(--red-lo); transform: translateY(2px); }
   .black.active::after { background: #ff8b6a; }
 
-  /* LEARN HINTS — flat fills, no glow */
+  /* LEARN HINTS: flat fills, no glow */
   .white.hint  { background: #2f6df0; }
   .white.hint2 { background: #bcd0ff; }
   .black.hint  { background: #2f6df0; }
@@ -291,14 +265,14 @@
 
   .label {
     position: absolute; bottom: 10px; left: 0; right: 0; text-align: center;
-    font-family: var(--mono); font-size: 9px; letter-spacing: .5px;
+    font-size: 10px;
     color: var(--mute); pointer-events: none;
   }
   .black .label { color: #c7bfb0; bottom: 8px; }
   .white.active .label, .white.hint .label { color: rgba(255,255,255,.85); }
   .keycap {
     position: absolute; bottom: 26px; left: 0; right: 0; text-align: center;
-    font-family: var(--mono); font-weight: 700; font-size: 11px;
+    font-weight: 700; font-size: 12px;
     color: var(--ink); pointer-events: none;
   }
   .black .keycap { color: #d8d0c0; bottom: 20px; }
@@ -309,6 +283,23 @@
     padding: 1px 5px; font-size: 10px;
   }
   .hidden { display: none !important; }
+
+  @media (max-width: 900px) {
+    html, body { height: auto; overflow: auto; }
+    .app {
+      height: auto; width: auto; padding: 16px; gap: 16px;
+      grid-template-columns: minmax(0, 1fr); grid-template-rows: none;
+      grid-template-areas: "top" "stage" "piano" "right" "left";
+    }
+    .top, .topr { flex-direction: column; align-items: flex-start; }
+    .brand { flex-wrap: wrap; gap: 8px 14px; }
+    .colophon { text-align: left; }
+    .stage { min-height: 28px; }
+    .cabinet { overflow-x: auto; padding: 10px; }
+    .cabinet .strip, .piano { min-width: 760px; }
+    .piano { height: 200px; }
+    .panel { overflow: visible; }
+  }
 
   /* scrollbars kept minimal */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -323,17 +314,17 @@
   <div class="top">
     <div class="brand">
       <h1>Piano<span class="amp">.</span></h1>
-      <div class="tag">Six voices and five songs to learn. Nothing to download.</div>
+      <div class="tag">Six voices and five songs to learn, played from your keyboard.</div>
     </div>
-    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:10px;">
-      <div class="colophon">Est. <b>here &amp; now</b> · Web Audio synthesis<br>Built by hand, key by key</div>
+    <div class="topr">
+      <div class="colophon">Every note is synthesised in the browser with Web Audio · © 2026 <a href="https://bxzex.com">bxzex</a></div>
       <div class="voices" id="voices"></div>
     </div>
   </div>
 
   <!-- LEFT: sound controls -->
   <div class="panel left">
-    <span class="tab">Sound / Console</span>
+    <span class="tab">Sound</span>
     <div class="slider-row" data-p="volume">
       <div class="lbl"><span>Volume</span><span class="val"></span></div>
       <input type="range" min="0" max="100" value="75">
@@ -356,14 +347,14 @@
     </div>
 
     <span class="tab" style="margin-top:6px;">Switches</span>
-    <label class="toggle-row">Sustain · Space <input type="checkbox" id="sustainToggle"></label>
+    <label class="toggle-row">Sustain (hold Space) <input type="checkbox" id="sustainToggle"></label>
     <label class="toggle-row">Note names <input type="checkbox" id="labelToggle"></label>
     <label class="toggle-row">Key hints <input type="checkbox" id="keycapToggle" checked></label>
   </div>
 
   <!-- STAGE -->
   <div class="stage">
-    <div class="idle" id="stageIdle">Play a key, or <b>learn a song</b>.</div>
+    <div class="idle" id="stageIdle">Play a key, or pick a song to learn.</div>
     <div class="playing hidden" id="stagePlaying" style="display:flex;align-items:center;gap:22px;flex:1;">
       <span class="now" id="nowTitle"></span>
       <div class="progress" id="progress"><div></div></div>
@@ -372,18 +363,18 @@
 
   <!-- RIGHT: songs / learn -->
   <div class="panel right">
-    <span class="tab">Repertoire</span>
+    <span class="tab">Songs</span>
     <div class="song-list" id="songList"></div>
     <div class="learn-controls">
-      <button class="btn" id="btnLearn" disabled>▶ Learn step by step</button>
-      <button class="btn ghost" id="btnDemo" disabled>♪ Play demo</button>
-      <button class="btn ghost hidden" id="btnStop">■ Stop</button>
+      <button class="btn" id="btnLearn" disabled>Learn step by step</button>
+      <button class="btn ghost" id="btnDemo" disabled>Play demo</button>
+      <button class="btn ghost hidden" id="btnStop">Stop</button>
     </div>
   </div>
 
   <!-- PIANO -->
   <div class="cabinet">
-    <div class="strip"><span>Model No. 88</span><span>◆ ◆ ◆</span><span>Handmade</span></div>
+    <div class="strip"><span>Piano</span><span>37 keys, C3 to C6</span></div>
     <div class="piano" id="piano"></div>
   </div>
 
@@ -391,7 +382,7 @@
 
 <script>
 /* ================================================================== */
-/*  NOTES  —  C3 .. C6 (three octaves + top C)                          */
+/*  NOTES:  C3 .. C6 (three octaves + top C)                          */
 /* ================================================================== */
 const WHITE = ["C","D","E","F","G","A","B"];
 const BLACK_AFTER = { C:"C#", D:"D#", F:"F#", G:"G#", A:"A#" };
@@ -639,6 +630,9 @@ function release(note) {
   stop(note);
 }
 
+// on a narrow screen the keyboard scrolls sideways: start on the lettered middle octaves
+piano.parentElement.scrollLeft = (piano.parentElement.scrollWidth - piano.parentElement.clientWidth) / 2;
+
 let started = false;
 function markStarted(){ if(!started){ started = true; } }
 
@@ -681,6 +675,7 @@ document.querySelectorAll(".slider-row").forEach(row => {
   const p = row.dataset.p;
   const input = row.querySelector("input");
   const val = row.querySelector(".val");
+  input.setAttribute("aria-label", row.querySelector(".lbl span").textContent);
   const upd = () => {
     const x = +input.value / 100;
     params[p] = x;
@@ -748,7 +743,8 @@ const SONGS = {
 const songListEl = document.getElementById("songList");
 let selectedSong = null;
 Object.entries(SONGS).forEach(([id, s]) => {
-  const d = document.createElement("div");
+  const d = document.createElement("button");
+  d.type = "button";
   d.className = "song-item";
   d.innerHTML = `<span>${s.title}</span><small>${s.notes.length} notes<br>${s.tempo} bpm</small>`;
   d.onclick = () => {
@@ -798,7 +794,7 @@ function stopAll() {
   btnStop.classList.add("hidden");
   btnLearn.classList.remove("hidden"); btnDemo.classList.remove("hidden");
   btnLearn.disabled = btnDemo.disabled = !selectedSong;
-  btnLearn.textContent = "▶ Learn step by step";
+  btnLearn.textContent = "Learn step by step";
   hideStage();
 }
 btnStop.onclick = stopAll;
@@ -831,7 +827,7 @@ btnLearn.onclick = () => {
   learn.active = true;
   learn.idx = 0;
   learn.notes = s.notes;
-  enterPlayUI(s.title + ": play the key that lights up", false);
+  enterPlayUI(s.title + ": play the blue key", false);
   cueLearn();
 };
 
@@ -860,7 +856,7 @@ function checkLearnHit(note) {
 }
 
 function flashDone() {
-  nowTitle.textContent = "✓ Nice, you played the whole song";
+  nowTitle.textContent = "Song complete.";
   clearHints();
   setTimeout(stopAll, 1600);
 }
